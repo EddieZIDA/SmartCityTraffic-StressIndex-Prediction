@@ -4,8 +4,15 @@ import plotly.express as px
 import pandas as pd
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from utils import load_model, load_data, build_input, stress_level
+from pathlib import Path
+
+# --- FIX DES CHEMINS POUR STREAMLIT CLOUD ---
+# On s'assure que le dossier racine est bien dans le path pour importer utils
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
+
+from utils import load_model, load_scaler, load_data, build_input, stress_level
 
 st.set_page_config(page_title="Prédiction", page_icon="🎯", layout="wide")
 
@@ -15,7 +22,9 @@ st.caption(
     "la prédiction se met à jour instantanément."
 )
 
+# Chargement des ressources (Modèle + Scaler + Data)
 model = load_model()
+scaler = load_scaler() # <--- AJOUTÉ : Chargement du scaler
 df, raw = load_data()
 
 # ── Sidebar inputs ──────────────────────────────────────────────
@@ -40,11 +49,17 @@ weather = st.sidebar.selectbox(
 )
 
 # ── Prédiction ───────────────────────────────────────────────────
-X = build_input(
+# 1. Construction du DataFrame brut
+X_raw = build_input(
     traffic_density, signal_wait_time, avg_speed,
     road_quality, experience, weather, horn_events
 )
-score = float(model.predict(X)[0])
+
+# 2. Application du Scaler (CRUCIAL : Évite le score 0.0)
+X_scaled = scaler.transform(X_raw) 
+
+# 3. Prédiction sur les données transformées
+score = float(model.predict(X_scaled)[0])
 score = max(0, min(100, score))
 level, color = stress_level(score)
 congestion = (traffic_density * signal_wait_time) / 100
@@ -99,7 +114,7 @@ with col_metrics:
     badge_exp = {"Beginner": "🟡", "Intermediate": "🔵", "Expert": "🟢"}
     badge_wea = {"Clear": "☀️", "Foggy": "🌫️", "Hot": "🌡️", "Rainy": "🌧️"}
     st.info(
-        f"{badge_exp[experience]} **{experience}**  ·  "
+        f"{badge_exp[experience]} **{experience}** ·  "
         f"{badge_wea[weather]} **{weather}**"
     )
 
@@ -175,8 +190,10 @@ for v in sim_range:
     spd = v if param_choice == "Vitesse moyenne" else avg_speed
     swt = v if param_choice == "Attente aux feux" else signal_wait_time
     rq = v if param_choice == "Qualité de route" else road_quality
-    X_sim = build_input(td, swt, spd, rq, experience, weather, horn_events)
-    sim_scores.append(float(model.predict(X_sim)[0]))
+    X_sim_raw = build_input(td, swt, spd, rq, experience, weather, horn_events)
+    # Application du scaler ici aussi pour la simulation
+    X_sim_scaled = scaler.transform(X_sim_raw)
+    sim_scores.append(float(model.predict(X_sim_scaled)[0]))
 
 sim_df = pd.DataFrame({"x": list(sim_range), "stress": sim_scores})
 

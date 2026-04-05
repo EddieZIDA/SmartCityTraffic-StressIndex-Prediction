@@ -1,4 +1,4 @@
-# 🏙️ Smart City — Prédiction de l'Indice de Stress Urbain
+# Smart City — Prédiction de l'Indice de Stress Urbain
 
 > Projet Data Science complet · EDA → Preprocessing → Modélisation → Déploiement Streamlit
 
@@ -9,21 +9,7 @@
 
 ---
 
-## 📋 Table des matières
-
-- [Contexte et objectif](#-contexte-et-objectif)
-- [Dataset](#-dataset)
-- [Structure du projet](#-structure-du-projet)
-- [Pipeline ML](#-pipeline-ml)
-- [Résultats](#-résultats)
-- [Application Streamlit](#-application-streamlit)
-- [Installation](#-installation)
-- [Technologies utilisées](#-technologies-utilisées)
-- [Auteur](#-auteur)
-
----
-
-## 🎯 Contexte et objectif
+## Contexte et objectif
 
 Dans le contexte des **Smart Cities**, la gestion du trafic urbain est un enjeu majeur pour la qualité de vie des habitants. La congestion routière, les longues attentes aux feux et les comportements agressifs au volant génèrent un stress croissant chez les conducteurs, avec des impacts directs sur la sécurité routière et la santé publique.
 
@@ -62,7 +48,7 @@ Dans le contexte des **Smart Cities**, la gestion du trafic urbain est un enjeu 
 
 ---
 
-## 📁 Structure du projet
+## Structure du projet
 
 ```
 SmartCityTraffic-StressIndex-Prediction/
@@ -99,24 +85,6 @@ SmartCityTraffic-StressIndex-Prediction/
 
 ---
 
-## 🔬 Pipeline ML
-
-### 1. Analyse Exploratoire (EDA)
-
-- Distributions des variables numériques (histplot + KDE + mean/median)
-- Détection des outliers par méthode IQR → **276 outliers au total (<1%), conservés**
-- Matrice de corrélation révélant une forte multicolinéarité
-- Analyse des variables catégorielles avec test d'équilibre des classes
-
-**Corrélations clés avec `stress_index` :**
-
-| Variable | Corrélation |
-|----------|-------------|
-| `traffic_density` | +0.85 |
-| `signal_wait_time` | +0.85 |
-| `horn_events_per_min` | +0.76 |
-| `avg_speed` | -0.81 |
-| `road_quality_score` | -0.25 |
 
 ### 2. Preprocessing
 
@@ -128,9 +96,9 @@ SmartCityTraffic-StressIndex-Prediction/
 
 | Feature créée | Formule | Corrélation avec target | Décision |
 |---------------|---------|------------------------|----------|
-| `congestion_score` | `traffic_density × signal_wait_time / 100` | **+0.835** | ✅ Conservée |
-| `horn_density` | `horn_events_per_min / (traffic_density + 1)` | -0.169 | ✅ Conservée (data_boost) |
-| `speed_efficiency` | `avg_speed / (traffic_density + 1)` | -0.705 | ❌ Supprimée (redondante) |
+| `congestion_score` | `traffic_density × signal_wait_time / 100` | **+0.835** | Conservée |
+| `horn_density` | `horn_events_per_min / (traffic_density + 1)` | -0.169 | Conservée (data_boost) |
+| `speed_efficiency` | `avg_speed / (traffic_density + 1)` | -0.705 | Supprimée (redondante) |
 
 **Traitement de la multicolinéarité (VIF) :**
 - Variables supprimées : `traffic_density` (VIF=269), `signal_wait_time` (VIF=239), `horn_events_per_min` (VIF=39)
@@ -153,10 +121,10 @@ SmartCityTraffic-StressIndex-Prediction/
 
 | Modèle | R² test | RMSE | MAE | Gap overfit |
 |--------|---------|------|-----|-------------|
-| LinearRegression | 0.8587 | 6.107 | 4.871 | 0.0049 ✅ |
-| RandomForest | 0.9019 | 5.088 | 4.078 | **0.0844 ⚠️** |
-| XGBoost | 0.9045 | 5.022 | 4.017 | 0.0256 ✅ |
-| LightGBM | 0.9086 | 4.913 | 3.930 | 0.0084 ✅ |
+| LinearRegression | 0.8587 | 6.107 | 4.871 | 0.0049 |
+| RandomForest | 0.9019 | 5.088 | 4.078 | **0.0844** |
+| XGBoost | 0.9045 | 5.022 | 4.017 | 0.0256 |
+| LightGBM | 0.9086 | 4.913 | 3.930 | 0.0084 |
 
 **Tuning** — `RandomizedSearchCV` (30 itérations × 5 folds KFold) :
 
@@ -164,13 +132,13 @@ SmartCityTraffic-StressIndex-Prediction/
 
 | Modèle | R² avant | R² après | RMSE après | Gain | Gap |
 |--------|----------|----------|------------|------|-----|
-| RandomForest | 0.9019 | 0.9077 | 4.937 | +0.0058 | 0.019 ✅ |
-| XGBoost | 0.9045 | **0.9090** | **4.902** | +0.0045 | 0.011 ✅ |
-| LightGBM | 0.9086 | 0.9085 | 4.915 | -0.0001 | 0.004 ✅ |
+| RandomForest | 0.9019 | 0.9077 | 4.937 | +0.0058 | 0.019 |
+| XGBoost | 0.9045 | **0.9090** | **4.902** | +0.0045 | 0.011 |
+| LightGBM | 0.9086 | 0.9085 | 4.915 | -0.0001 | 0.004|
 
 ---
 
-## 🏆 Résultats
+## Résultats
 
 ### Meilleur modèle : XGBoost tuné
 
@@ -193,39 +161,28 @@ XGBRegressor(
 )
 ```
 
-### Feature Importance (XGBoost tuné)
-
-| Feature | Importance |
-|---------|-----------|
-| `congestion_score` | ~52% |
-| `avg_speed` | ~28% |
-| `driver_experience_encoded` | ~9% |
-| `road_quality_score` | ~5% |
-| `horn_density` | ~3% |
-| `weather_*` | ~3% |
-
 > **Insight clé :** `congestion_score` (feature engineered) est de loin la plus prédictive, validant l'approche de feature engineering. La relation est majoritairement linéaire (R²=0.859 en régression) — les arbres capturent les 5% d'interactions non-linéaires restants.
 
 ---
 
-## 🌐 Application Streamlit
+## Application Streamlit
 
-**Application déployée :** [smartcitytraffic-stressindex-prediction.streamlit.app](https://smartcitytraffic-stressindex-prediction.streamlit.app)
+**Application déployée :** [smartcitytraffic-stressindex-prediction.streamlit.app](https://smartcitytraffic-stressindex-prediction.streamlit.app/)
 
 ### Pages disponibles
 
-**🎯 Prédiction** — Prédiction en temps réel avec :
+**Prédiction** — Prédiction en temps réel avec :
 - Jauge interactive (indice de stress 0-100)
 - Sliders pour tous les paramètres de conduite
 - Contribution estimée de chaque variable
 - Simulation de l'impact d'un paramètre (courbe dynamique)
 
-**📊 Exploration** — Analyse interactive du dataset :
+**Exploration** — Analyse interactive du dataset :
 - Filtres sur météo, expérience, plage de stress
 - Distributions, matrice de corrélation, boxplots
 - Scatter plots avec droite de régression
 
-**🏆 Performance** — Comparaison des modèles :
+** Performance** — Comparaison des modèles :
 - R² avant/après tuning par modèle
 - Analyse de l'overfitting (gap train/test)
 - Feature importance interactive (RF, XGBoost, LightGBM)
@@ -275,7 +232,7 @@ Exécuter dans l'ordre : `01_eda.ipynb` → `02_preprocessing.ipynb` → `03_mod
 
 ---
 
-## 🛠️ Technologies utilisées
+## Technologies utilisées
 
 | Catégorie | Outil | Version |
 |-----------|-------|---------|
@@ -292,7 +249,7 @@ Exécuter dans l'ordre : `01_eda.ipynb` → `02_preprocessing.ipynb` → `03_mod
 
 ---
 
-## 📚 Références
+## Références
 
 - [Smart City Traffic Stress Index Dataset](https://www.kaggle.com/datasets/sonalshinde123/smart-city-traffic-stress-index-dataset/data)
 - [Traffic Stress Index EDA & Prediction (XGBoost)](https://www.kaggle.com/code/pialghosh/traffic-stress-index-eda-prediction-xgboost)
@@ -300,12 +257,11 @@ Exécuter dans l'ordre : `01_eda.ipynb` → `02_preprocessing.ipynb` → `03_mod
 
 ---
 
-## 👤 Auteur
+## Auteur
 
 **ZIDA Wend Kouni Eddie Eliel**
 
-[![GitHub](https://img.shields.io/badge/GitHub-Profile-black?logo=github)](https://github.com/ton-username)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Profile-blue?logo=linkedin)](https://linkedin.com/in/ton-profil)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Profile-blue?logo=linkedin)](https://www.linkedin.com/in/wend-kouni-eddie-eliel-zida-501815260/?skipRedirect=true)
 
 ---
 

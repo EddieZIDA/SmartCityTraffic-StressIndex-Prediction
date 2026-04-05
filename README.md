@@ -2,7 +2,7 @@
 
 > Projet Data Science complet · EDA → Preprocessing → Modélisation → Déploiement Streamlit
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://smartcitytraffic-stressindex-prediction.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://smartcitytraffic-stressindex-prediction.streamlit.app/)
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![XGBoost](https://img.shields.io/badge/XGBoost-2.1.1-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -23,11 +23,11 @@ Dans le contexte des **Smart Cities**, la gestion du trafic urbain est un enjeu 
 
 ---
 
-## 📊 Dataset
+## Dataset
 
 | Attribut | Valeur |
 |----------|--------|
-| **Source** | [Smart City Traffic Stress Index Dataset — Kaggle](https://www.kaggle.com/datasets/sonalshinde123/smart-city-traffic-stress-index-dataset/data) |
+| **Source** | [Smart City Traffic Stress Index Dataset - Kaggle](https://www.kaggle.com/datasets/sonalshinde123/smart-city-traffic-stress-index-dataset/data) |
 | **Observations** | 50 000 |
 | **Variables** | 8 (6 numériques + 2 catégorielles) |
 | **Valeurs manquantes** | 0 |
@@ -37,14 +37,14 @@ Dans le contexte des **Smart Cities**, la gestion du trafic urbain est un enjeu 
 
 | Variable | Type | Description | Plage |
 |----------|------|-------------|-------|
-| `traffic_density` | int64 | Nombre de véhicules en circulation | 10 – 119 |
-| `horn_events_per_min` | float64 | Klaxons par minute | 0 – 24.86 |
-| `avg_speed` | float64 | Vitesse moyenne (km/h) | 13.86 – 90 |
-| `signal_wait_time` | float64 | Attente aux feux (secondes) | 5 – 74.5 |
-| `weather_condition` | object | Météo (Clear/Foggy/Hot/Rainy) | 4 modalités |
-| `road_quality_score` | float64 | Qualité de la route (0-10) | 1 – 10 |
-| `driver_experience_level` | object | Expérience du conducteur | 3 modalités |
-| `stress_index` | float64 | **Variable cible** | 0 – 100 |
+| traffic_density | int64 | Nombre de véhicules en circulation | 10 – 119 |
+| horn_events_per_min | float64 | Klaxons par minute | 0 – 24.86 |
+| avg_speed | float64 | Vitesse moyenne (km/h) | 13.86 – 90 |
+| signal_wait_time | float64 | Attente aux feux (secondes) | 5 – 74.5 |
+| weather_condition | object | Météo (Clear/Foggy/Hot/Rainy) | 4 modalités |
+| road_quality_score | float64 | Qualité de la route (0-10) | 1 – 10 |
+| driver_experience_level | object | Expérience du conducteur | 3 modalités |
+| stress_index | float64 | **Variable cible** | 0 – 100 |
 
 ---
 
@@ -102,7 +102,7 @@ SmartCityTraffic-StressIndex-Prediction/
 
 **Traitement de la multicolinéarité (VIF) :**
 - Variables supprimées : `traffic_density` (VIF=269), `signal_wait_time` (VIF=239), `horn_events_per_min` (VIF=39)
-- VIF final `data_lin` : tous < 3.5 ✅
+- VIF final `data_lin` : tous < 3.5 
 
 **Deux datasets distincts selon le modèle :**
 
@@ -115,7 +115,7 @@ SmartCityTraffic-StressIndex-Prediction/
 
 ### 3. Modélisation
 
-**Split :** 80% train / 20% test — `random_state=42`
+**Split :** 80% train / 20% test - `random_state=42`
 
 **Résultats avant tuning :**
 
@@ -126,7 +126,7 @@ SmartCityTraffic-StressIndex-Prediction/
 | XGBoost | 0.9045 | 5.022 | 4.017 | 0.0256 |
 | LightGBM | 0.9086 | 4.913 | 3.930 | 0.0084 |
 
-**Tuning** — `RandomizedSearchCV` (30 itérations × 5 folds KFold) :
+**Tuning** - `RandomizedSearchCV` (30 itérations × 5 folds KFold) :
 
 **Résultats après tuning :**
 
@@ -161,7 +161,7 @@ XGBRegressor(
 )
 ```
 
-> **Insight clé :** `congestion_score` (feature engineered) est de loin la plus prédictive, validant l'approche de feature engineering. La relation est majoritairement linéaire (R²=0.859 en régression) — les arbres capturent les 5% d'interactions non-linéaires restants.
+> **Insight clé :** `congestion_score` (feature engineered) est de loin la plus prédictive, validant l'approche de feature engineering. La relation est majoritairement linéaire (R²=0.859 en régression) - les arbres capturent les 5% d'interactions non-linéaires restants.
 
 ---
 
@@ -171,26 +171,13 @@ XGBRegressor(
 
 ### Pages disponibles
 
-**Prédiction** — Prédiction en temps réel avec :
-- Jauge interactive (indice de stress 0-100)
-- Sliders pour tous les paramètres de conduite
-- Contribution estimée de chaque variable
-- Simulation de l'impact d'un paramètre (courbe dynamique)
-
-**Exploration** — Analyse interactive du dataset :
-- Filtres sur météo, expérience, plage de stress
-- Distributions, matrice de corrélation, boxplots
-- Scatter plots avec droite de régression
-
-** Performance** — Comparaison des modèles :
-- R² avant/après tuning par modèle
-- Analyse de l'overfitting (gap train/test)
-- Feature importance interactive (RF, XGBoost, LightGBM)
-- Résidus réels du modèle XGBoost sur data_boost
+**Prédiction** - Prédiction en temps réel      
+**Exploration** - Analyse interactive du dataset     
+**Performance** - Comparaison des modèles      
 
 ---
 
-## ⚙️ Installation
+## Installation
 
 ### Prérequis
 
@@ -265,4 +252,4 @@ Exécuter dans l'ordre : `01_eda.ipynb` → `02_preprocessing.ipynb` → `03_mod
 
 ---
 
-*Projet réalisé dans le cadre d'une formation Data Science · Avril 2026*
+*Projet réalisé dans le cadre d'une formation certifiante en Data Science de Africa Techup Tour · Avril 2026*

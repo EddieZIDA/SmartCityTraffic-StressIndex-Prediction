@@ -76,6 +76,9 @@ SmartCityTraffic-StressIndex-Prediction/
 │   ├── 02_preprocessing.ipynb   # Preprocessing + feature engineering
 │   └── 03_modeling.ipynb        # Modélisation + tuning
 │
+├── src/
+│   └── train_models.py           # Entraînement XGBoost/LinearRegression + tracking MLflow
+│
 ├── results/
 │   └── figures/                  # Graphiques exportés
 │
@@ -85,6 +88,19 @@ SmartCityTraffic-StressIndex-Prediction/
 
 ---
 
+## Usage
+
+Pour entraîner les modèles et enregistrer le tracking MLflow :
+
+```bash
+python src/train_models.py
+```
+
+Le script crée un experiment MLflow nommé `smartcity-stress-prediction` et lance deux runs :
+- `LinearRegression_baseline`
+- `XGBoost_final`
+
+---
 
 ### 2. Preprocessing
 

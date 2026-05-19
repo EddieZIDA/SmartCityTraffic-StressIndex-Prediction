@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(
     page_title="Traffic Stress Predictor",
-    page_icon="🚦",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -30,15 +30,20 @@ st.markdown("""
     }
     .nav-card h3 { color: #1F4E79 !important; margin-top: 0; }
     .nav-card p  { color: #444 !important; }
-    [data-testid="stSidebar"]      { background-color: #f0f4f8 !important; }
-    [data-testid="stMetricValue"]  { color: #1F4E79; }
+    
+    /* Couleur de fond modifiée pour la barre latérale */
+    [data-testid="stSidebar"] { 
+        background-color: #262730 !important; 
+    }
+    
+    [data-testid="stMetricValue"] { color: #1F4E78; }
     h1 { color: #1F4E79; }
     h2 { color: #2E75B6; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown(
-    '<p class="main-title">🚦 Smart City Traffic Stress Predictor</p>',
+    '<p class="main-title">Smart City Traffic Stress Predictor</p>',
     unsafe_allow_html=True
 )
 st.markdown(
@@ -63,24 +68,24 @@ c3.metric("RMSE",            "4.902",         "sur échelle 0-100")
 c4.metric("MAE",             "3.927",         "erreur absolue moyenne")
 
 st.divider()
-st.subheader("👈 Utilisez le menu latéral pour naviguer")
+st.subheader("Utilisez le menu latéral pour naviguer")
 
 n1, n2, n3 = st.columns(3)
 with n1:
     st.markdown("""<div class="nav-card">
-        <h3>🔮 Prediction</h3>
+        <h3>Prediction</h3>
         <p>Estimez le stress en entrant de nouvelles données de conduite.
         Jauge interactive + simulation de l'impact de chaque paramètre.</p>
     </div>""", unsafe_allow_html=True)
 with n2:
     st.markdown("""<div class="nav-card">
-        <h3>📊 Exploration</h3>
+        <h3>Exploration</h3>
         <p>Visualisez les données brutes de l'étude : distributions,
         corrélations et relations entre variables.</p>
     </div>""", unsafe_allow_html=True)
 with n3:
     st.markdown("""<div class="nav-card">
-        <h3>🏆 Performance</h3>
+        <h3>Performance</h3>
         <p>Consultez les métriques du modèle final, l'analyse de l'overfitting
         et les feature importances.</p>
     </div>""", unsafe_allow_html=True)

@@ -8,9 +8,9 @@ import plotly.express as px
 import pandas as pd
 from utils import load_model, preprocess_input, stress_level
 
-st.set_page_config(page_title="Prediction", page_icon="🔮", layout="wide")
+st.set_page_config(page_title="Prediction", page_icon="", layout="wide")
 
-st.title("🔮 Prédiction du Stress Index")
+st.title("Prédiction du Stress Index")
 st.write(
     "Saisissez les paramètres de circulation pour estimer "
     "le niveau de stress du conducteur."
@@ -22,20 +22,20 @@ if model is None:
 
 # ── Sidebar inputs ────────────────────────────────────────────────
 st.sidebar.header("Paramètres de conduite")
-traffic_density  = st.sidebar.slider("🚗 Densité du trafic",       10,   119,  64)
-signal_wait_time = st.sidebar.slider("🚦 Attente aux feux (s)",      5,    75,  37)
-avg_speed        = st.sidebar.slider("💨 Vitesse moyenne (km/h)",   14,    90,  54)
-horn_events      = st.sidebar.slider("📯 Klaxons / minute",          0,    25,   9)
+traffic_density  = st.sidebar.slider("Densité du trafic",       10,   119,  64)
+signal_wait_time = st.sidebar.slider("Attente aux feux (s)",      5,    75,  37)
+avg_speed        = st.sidebar.slider("Vitesse moyenne (km/h)",   14,    90,  54)
+horn_events      = st.sidebar.slider("Klaxons / minute",          0,    25,   9)
 road_quality     = st.sidebar.slider(
-    "🛣️ Qualité de route (0-10)", 1.0, 10.0, 7.0, 0.1
+    "Qualité de route (0-10)", 1.0, 10.0, 7.0, 0.1
 )
 st.sidebar.divider()
 experience = st.sidebar.selectbox(
-    "👤 Expérience conducteur",
+    "Expérience conducteur",
     ["Beginner", "Intermediate", "Expert"], index=1
 )
 weather = st.sidebar.selectbox(
-    "🌤️ Conditions météo", ["Clear", "Foggy", "Hot", "Rainy"]
+    "Conditions météo", ["Clear", "Foggy", "Hot", "Rainy"]
 )
 
 # ── Prédiction ────────────────────────────────────────────────────
@@ -94,8 +94,8 @@ with col_m:
     m1.metric("Qualité route",    f"{road_quality}/10")
     m2.metric("Congestion score", f"{congestion}",
               help="traffic × attente / 100")
-    badge_exp = {"Beginner": "🟡", "Intermediate": "🔵", "Expert": "🟢"}
-    badge_wea = {"Clear": "☀️", "Foggy": "🌫️", "Hot": "🌡️", "Rainy": "🌧️"}
+    badge_exp = {"Beginner": "", "Intermediate": "", "Expert": ""}
+    badge_wea = {"Clear": "", "Foggy": "", "Hot": "", "Rainy": ""}
     st.info(
         f"{badge_exp[experience]} **{experience}**  ·  "
         f"{badge_wea[weather]} **{weather}**"
@@ -106,7 +106,7 @@ with col_m:
 st.divider()
 
 # ── Contribution estimée ──────────────────────────────────────────
-st.subheader("📌 Contribution estimée des variables")
+st.subheader("Contribution estimée des variables")
 
 exp_map   = {"Beginner": 0, "Intermediate": 1, "Expert": 2}
 horn_d    = horn_events / (traffic_density + 1)
@@ -151,7 +151,7 @@ st.plotly_chart(fig_bar, use_container_width=True)
 st.divider()
 
 # ── Simulation ────────────────────────────────────────────────────
-st.subheader("🔭 Simulation — impact d'un paramètre")
+st.subheader("Simulation — impact d'un paramètre")
 
 param = st.selectbox("Faire varier :",
     ["Densité trafic", "Vitesse moyenne",

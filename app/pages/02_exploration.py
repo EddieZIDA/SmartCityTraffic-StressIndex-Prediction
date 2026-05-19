@@ -7,10 +7,10 @@ import plotly.express as px
 import pandas as pd
 from utils import load_raw_data
 
-st.set_page_config(page_title="Exploration des données", page_icon="📊",
+st.set_page_config(page_title="Exploration des données", page_icon="",
                    layout="wide")
 
-st.title("📊 Exploration du Dataset")
+st.title("Exploration du Dataset")
 st.markdown(
     "Cette page présente les données brutes issues de "
     "**smart_city_traffic_stress_dataset.csv** avant le Feature Engineering."
@@ -19,7 +19,7 @@ st.markdown(
 df = load_raw_data()
 
 if df.empty:
-    st.warning("⚠️ Les données n'ont pas pu être chargées.")
+    st.warning("Les données n'ont pas pu être chargées.")
     st.stop()
 
 # ── KPIs ──────────────────────────────────────────────────────────

@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/hp/Documents/SmartCityTraffic-StressIndex-Prediction/mlruns/764399514502352011/44a94291201a486684b6c5d54480d6c7/artifacts
+end_time: 1779232042323
+entry_point_name: ''
+experiment_id: '764399514502352011'
+lifecycle_stage: active
+run_id: 44a94291201a486684b6c5d54480d6c7
+run_name: LinearRegression_baseline
+run_uuid: 44a94291201a486684b6c5d54480d6c7
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1779232034548
+status: 3
+tags: []
+user_id: hp

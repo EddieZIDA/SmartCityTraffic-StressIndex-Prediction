@@ -8,9 +8,9 @@ import pandas as pd
 import numpy as np
 from utils import load_model, load_boost_data, FEATURE_COLS
 
-st.set_page_config(page_title="Performances", page_icon="🏆", layout="wide")
+st.set_page_config(page_title="Performances", page_icon="", layout="wide")
 
-st.title("🏆 Performances du Modèle")
+st.title("Performances du Modèle")
 st.markdown(
     "Cette section détaille les performances des modèles évalués durant "
     "la phase de développement, ainsi que les caractéristiques du modèle final."
@@ -42,7 +42,7 @@ st.markdown("Quatre modèles ont été évalués initialement :")
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Linear Regression", "R² = 0.8587", "Benchmark")
-c2.metric("Random Forest",     "R² = 0.9019", "⚠️ Overfitting gap=0.084")
+c2.metric("Random Forest",     "R² = 0.9019", "Overfitting gap=0.084")
 c3.metric("XGBoost",           "R² = 0.9045")
 c4.metric("LightGBM",          "R² = 0.9086")
 

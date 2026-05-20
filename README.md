@@ -65,8 +65,10 @@ SmartCityTraffic-StressIndex-Prediction/
 │   ├── raw/                      # Données brutes (CSV original)
 │   └── processed/                # Datasets prétraités (lin + boost)
 │
-├── models/                       # Modèles et artefacts sauvegardés
+├── models/                       # Modèles sauvegardés
 │   ├── best_model_tuned_xgboost.pkl
+│   ├── best_model_lightgbm.pkl
+│   ├── best_model_linear_regression.pkl
 │   ├── scaler.pkl
 │   ├── ordinal_encoder.pkl
 │   └── best_params.pkl
@@ -77,11 +79,16 @@ SmartCityTraffic-StressIndex-Prediction/
 │   └── 03_modeling.ipynb        # Modélisation + tuning
 │
 ├── src/
-│   └── train_models.py           # Entraînement XGBoost/LinearRegression + tracking MLflow
+│   └── train_models.py           # Entraînement + tracking MLflow
+│
+├── tests/
+│   ├── conftest.py               # Fixtures pytest
+│   └── test_preprocessing.py    # Tests unitaires preprocessing
 │
 ├── results/
 │   └── figures/                  # Graphiques exportés
 │
+├── mlruns/                       # Artefacts MLflow (local)
 ├── requirements.txt
 └── README.md
 ```
@@ -203,7 +210,7 @@ XGBRegressor(
 ### Cloner et installer
 
 ```bash
-git clone https://github.com/ton-username/SmartCityTraffic-StressIndex-Prediction.git
+git clone https://github.com/EddieZIDA/SmartCityTraffic-StressIndex-Prediction.git
 cd SmartCityTraffic-StressIndex-Prediction
 
 python -m venv venv

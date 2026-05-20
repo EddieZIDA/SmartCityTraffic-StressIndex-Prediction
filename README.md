@@ -2,7 +2,7 @@
 
 > Projet Data Science complet · EDA → Preprocessing → Modélisation → Déploiement Streamlit
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://smartcitytraffic-stressindex-prediction.streamlit.app/)
+[![Streamlit App](https://smartcitytraffic-stressindex-prediction.streamlit.app/)
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![XGBoost](https://img.shields.io/badge/XGBoost-2.1.1-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)

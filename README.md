@@ -3,9 +3,10 @@
 > Projet Data Science complet · EDA → Preprocessing → Modélisation → Déploiement Streamlit
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://smartcitytraffic-stressindex-prediction.streamlit.app/)
-![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue)
 ![XGBoost](https://img.shields.io/badge/XGBoost-2.1.1-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![CI](https://github.com/EddieZIDA/SmartCityTraffic-StressIndex-Prediction/actions/workflows/ci.yml/badge.svg)
 
 ---
 
@@ -66,8 +67,11 @@ SmartCityTraffic-StressIndex-Prediction/
 │   └── processed/                # Datasets prétraités (lin + boost)
 │
 ├── models/                       # Modèles et artefacts sauvegardés
+│   ├── best_model_tuned_xgboost.json   # format natif XGBoost (chargé en priorité)
 │   ├── best_model_tuned_xgboost.pkl
-│   ├── scaler.pkl
+│   ├── best_model_lightgbm.pkl
+│   ├── best_model_linear_regression.pkl
+│   ├── scaler.pkl                      # data_lin / LinearRegression uniquement
 │   ├── ordinal_encoder.pkl
 │   └── best_params.pkl
 │
@@ -77,30 +81,37 @@ SmartCityTraffic-StressIndex-Prediction/
 │   └── 03_modeling.ipynb        # Modélisation + tuning
 │
 ├── src/
-│   └── train_models.py           # Entraînement XGBoost/LinearRegression + tracking MLflow
+│   └── train_models.py           # Entraînement des 4 modèles + tuning tracé (MLflow)
 │
 ├── results/
 │   └── figures/                  # Graphiques exportés
 │
+├── tests/                        # Tests unitaires (pytest)
+│   ├── conftest.py
+│   ├── test_preprocessing.py
+│   └── test_model_contract.py    # Contrat dataset ↔ modèle ↔ app
+│
+├── .github/workflows/ci.yml      # CI : pytest + flake8 sur Python 3.11 et 3.12
+│
+├── .flake8                       # Config lint (racine : couvre app/, src/, tests/)
+├── pytest.ini
 ├── requirements.txt
+├── LICENSE
 └── README.md
 ```
 
 ---
 
-## Usage
+## Méthodologie
 
-Pour entraîner les modèles et enregistrer le tracking MLflow :
+### 1. Analyse exploratoire (EDA)
 
-```bash
-python src/train_models.py
-```
-
-Le script crée un experiment MLflow nommé `smartcity-stress-prediction` et lance deux runs :
-- `LinearRegression_baseline`
-- `XGBoost_final`
-
----
+Notebook `01_eda.ipynb` — contrôle de la qualité des données (0 valeur manquante,
+0 doublon sur 50 000 observations), distributions univariées, détection des
+valeurs extrêmes et premières corrélations avec `stress_index`.
+Figures exportées dans `results/figures/` : `distributions.png`,
+`boxplots.png`, `correlation_matrix.png`, `pairplot.png`,
+`stress_vs_categorical.png`.
 
 ### 2. Preprocessing
 
@@ -116,16 +127,25 @@ Le script crée un experiment MLflow nommé `smartcity-stress-prediction` et lan
 | `horn_density` | `horn_events_per_min / (traffic_density + 1)` | -0.169 | Conservée (data_boost) |
 | `speed_efficiency` | `avg_speed / (traffic_density + 1)` | -0.705 | Supprimée (redondante) |
 
+La suppression de `speed_efficiency` a été re-testée : l'ajouter donne un R² en
+validation croisée de 0.9104 contre 0.9106 sans elle. Elle n'apporte donc rien
+une fois `avg_speed` et `traffic_density` toutes deux présentes.
+
 **Traitement de la multicolinéarité (VIF) :**
-- Variables supprimées : `traffic_density` (VIF=269), `signal_wait_time` (VIF=239), `horn_events_per_min` (VIF=39)
-- VIF final `data_lin` : tous < 3.5 
+- Variables à fort VIF : `traffic_density` (269), `signal_wait_time` (239), `horn_events_per_min` (39)
+- **Écartées de `data_lin` seulement.** Un VIF élevé déstabilise les coefficients
+  d'une régression linéaire ; les modèles à base d'arbres n'estiment pas de
+  coefficients et n'en souffrent pas. Les retirer de `data_boost` coûtait
+  **0.0014 de R²**, mesuré en validation croisée appariée (gagnant sur 25 folds
+  sur 25, p = 3×10⁻¹⁹) puis confirmé sur le jeu de test.
+- VIF final `data_lin` : tous < 3.5
 
 **Deux datasets distincts selon le modèle :**
 
 | Dataset | Features | Usage |
 |---------|----------|-------|
-| `data_lin` | `congestion_score`, `driver_experience_encoded`, `road_quality_score` | Régression linéaire (VIF strict) |
-| `data_boost` | + `avg_speed`, `horn_density`, `weather_*` | RandomForest, XGBoost, LightGBM |
+| `data_lin` (3) | `congestion_score`, `driver_experience_encoded`, `road_quality_score` | Régression linéaire (VIF strict) |
+| `data_boost` (11) | + `traffic_density`, `signal_wait_time`, `horn_events_per_min`, `avg_speed`, `horn_density`, `weather_*` | RandomForest, XGBoost, LightGBM |
 
 **Normalisation :** `StandardScaler` appliqué uniquement sur `data_lin`, après le split (pas de data leakage).
 
@@ -138,19 +158,36 @@ Le script crée un experiment MLflow nommé `smartcity-stress-prediction` et lan
 | Modèle | R² test | RMSE | MAE | Gap overfit |
 |--------|---------|------|-----|-------------|
 | LinearRegression | 0.8587 | 6.107 | 4.871 | 0.0049 |
-| RandomForest | 0.9019 | 5.088 | 4.078 | **0.0844** |
-| XGBoost | 0.9045 | 5.022 | 4.017 | 0.0256 |
-| LightGBM | 0.9086 | 4.913 | 3.930 | 0.0084 |
+| RandomForest | 0.9039 | 5.037 | 4.031 | **0.0828** |
+| XGBoost | 0.9056 | 4.992 | 3.998 | 0.0261 |
+| LightGBM | 0.9089 | 4.903 | 3.928 | 0.0093 |
 
-**Tuning** - `RandomizedSearchCV` (30 itérations × 5 folds KFold) :
+**Tuning** - `RandomizedSearchCV` (60 itérations × 5 folds KFold) :
+
+> La grille initiale plafonnait à `n_estimators=600`. L'optimum réel se situe
+> vers 930 arbres à faible learning rate : il était **hors de portée de la
+> recherche**, qui ne pouvait donc pas le trouver. L'élargissement de la grille
+> a suffi à le faire apparaître.
 
 **Résultats après tuning :**
 
 | Modèle | R² avant | R² après | RMSE après | Gain | Gap |
 |--------|----------|----------|------------|------|-----|
-| RandomForest | 0.9019 | 0.9077 | 4.937 | +0.0058 | 0.019 |
-| XGBoost | 0.9045 | **0.9090** | **4.902** | +0.0045 | 0.011 |
-| LightGBM | 0.9086 | 0.9085 | 4.915 | -0.0001 | 0.004|
+| RandomForest | 0.9039 | 0.9083 | 4.919 | +0.0044 | 0.0254 |
+| XGBoost | 0.9056 | **0.9100** | **4.873** | +0.0044 | 0.0046 |
+| LightGBM | 0.9089 | 0.9096 | 4.886 | +0.0006 | 0.0076 |
+
+Le `Gap` est ici `R² train − R² test`. Les versions antérieures de ce tableau
+comparaient le R² d'entraînement au R² de validation croisée, deux estimateurs
+différents, ce qui sous-estimait l'écart réel.
+
+> **Reproductibilité du tuning :** `RandomizedSearchCV` tire ses candidats via
+> `ParameterSampler`, dont l'implémentation dépend de la version de
+> scikit-learn. À `random_state=42` constant, un changement de version modifie
+> l'ensemble des candidats évalués et donc l'optimum retenu — constaté ici en
+> passant d'une version à l'autre. Les hyperparamètres ci-dessous ont été
+> obtenus avec **scikit-learn 1.4.2**, la version épinglée dans
+> `requirements.txt` ; c'est elle qu'il faut installer pour les retrouver.
 
 ---
 
@@ -159,25 +196,45 @@ Le script crée un experiment MLflow nommé `smartcity-stress-prediction` et lan
 ### Meilleur modèle : XGBoost tuné
 
 ```
-R²   = 0.9090  →  explique 90.9% de la variance du stress_index
-RMSE = 4.902   →  erreur quadratique moyenne sur échelle 0-100
-MAE  = 3.927   →  erreur absolue moyenne de ±3.9 points
-Gap  = 0.011   →  pas d'overfitting significatif
+R²   = 0.9100  →  explique 91.0% de la variance du stress_index
+RMSE = 4.873   →  erreur quadratique moyenne sur échelle 0-100
+MAE  = 3.901   →  erreur absolue moyenne de ±3.9 points
+Gap  = 0.0046  →  pas d'overfitting significatif
 ```
 
 **Hyperparamètres optimaux :**
 ```python
 XGBRegressor(
-    n_estimators     = 563,
-    learning_rate    = 0.019,
-    max_depth        = 6,
-    subsample        = 0.693,
-    colsample_bytree = 0.760,
+    n_estimators     = 933,
+    learning_rate    = 0.0208,
+    max_depth        = 3,
+    min_child_weight = 4,
+    subsample        = 0.8418,
+    colsample_bytree = 0.6102,
+    reg_lambda       = 0.6967,
     random_state     = 42
 )
 ```
 
-> **Insight clé :** `congestion_score` (feature engineered) est de loin la plus prédictive, validant l'approche de feature engineering. La relation est majoritairement linéaire (R²=0.859 en régression) - les arbres capturent les 5% d'interactions non-linéaires restants.
+`src/train_models.py` reprend ces valeurs en pleine précision : les arrondir
+produit un modèle légèrement différent de celui livré.
+
+> **Insight clé :** le trio de la congestion — `traffic_density`,
+> `congestion_score` et `signal_wait_time` — concentre 72 % à 76 % du gain selon
+> le modèle. L'importance se répartit entre la feature composite et les deux
+> variables dont elle est le produit : c'est l'effet attendu de la colinéarité,
+> deux features redondantes se partageant le crédit. Ce classement ne se lit
+> donc pas comme une hiérarchie causale.
+>
+> La relation est majoritairement linéaire (R²=0.859 en régression) — les arbres
+> capturent les ~5 % d'interactions non-linéaires restants.
+
+> **Où est le plafond ?** Un XGBoost à très forte capacité (2 000 arbres,
+> profondeur 8) obtient un R² en validation croisée de **0.905**, soit *moins*
+> que le modèle retenu : ajouter de la capacité ne fait plus que sur-apprendre.
+> Moyenner XGBoost, LightGBM et RandomForest donne 0.911, également en deçà du
+> meilleur modèle seul. Le signal exploitable de ce dataset est donc épuisé
+> autour de R² ≈ 0.91, le reste étant du bruit irréductible.
 
 ---
 
@@ -187,9 +244,14 @@ XGBRegressor(
 
 ### Pages disponibles
 
-**Prédiction** - Prédiction en temps réel      
-**Exploration** - Analyse interactive du dataset     
-**Performance** - Comparaison des modèles      
+| Page | Contenu |
+|------|---------|
+| **Prédiction** | Saisie des conditions de circulation, jauge du stress prédit, contribution estimée des variables et simulation de l'effet d'un paramètre sur toute sa plage |
+| **Exploration** | Distributions, corrélations et relations du dataset brut, avec filtres météo / expérience / plage de stress |
+| **Performance** | Comparaison des 4 modèles avant et après tuning, analyse de l'overfitting, importances des features et résidus calculés en direct sur `data_boost` |
+
+Le modèle est chargé depuis `models/best_model_tuned_xgboost.json` (format natif
+XGBoost), avec repli sur le `.pkl` si le premier est absent.
 
 ---
 
@@ -197,13 +259,17 @@ XGBRegressor(
 
 ### Prérequis
 
-- Python 3.11+
+- Python 3.11 ou 3.12 (les deux sont validées en CI)
 - Git
+
+> Sur Streamlit Community Cloud, la version de Python ne se déclare pas dans un
+> fichier du dépôt : elle se choisit dans les *Advanced settings* au moment du
+> déploiement. Elle doit correspondre à celle utilisée en développement.
 
 ### Cloner et installer
 
 ```bash
-git clone https://github.com/ton-username/SmartCityTraffic-StressIndex-Prediction.git
+git clone https://github.com/EddieZIDA/SmartCityTraffic-StressIndex-Prediction.git
 cd SmartCityTraffic-StressIndex-Prediction
 
 python -m venv venv
@@ -224,6 +290,74 @@ streamlit run app.py
 
 L'app s'ouvre sur `http://localhost:8501`.
 
+### Ré-entraîner les modèles (tracking MLflow)
+
+```bash
+python src/train_models.py
+```
+
+Le script crée un experiment MLflow nommé `smartcity-stress-prediction` et lance
+un run par modèle : `LinearRegression_baseline`, `RandomForest_final`,
+`XGBoost_final` et `LightGBM_final`. Chaque run enregistre :
+
+- les hyperparamètres et le `random_state` ;
+- les métriques **train et test** (`R2`, `RMSE`, `MAE`) ainsi que `gap_R2`,
+  l'écart de généralisation — ne logger que le test masquerait l'overfitting,
+  or c'est lui qui a départagé les modèles de ce projet ;
+- le modèle avec sa **signature** et un `input_example`, pour que MLflow valide
+  le schéma d'entrée au chargement ;
+- des tags identifiant le dataset et son empreinte SHA-256, sans quoi deux runs
+  aux scores différents seraient indiscernables d'un changement de données.
+
+Il écrit `models/best_model_tuned_xgboost.json` (format natif XGBoost, chargé en
+priorité par l'application), le `.pkl` équivalent et
+`models/best_model_linear_regression.pkl`. Il retourne un code de sortie non nul
+si une étape échoue.
+
+Pour rejouer la recherche d'hyperparamètres — chaque candidat évalué devient un
+run imbriqué avec ses paramètres et son score de validation croisée :
+
+```bash
+python src/train_models.py --tune          # long : 60 itérations x 5 folds x 3 modèles
+python src/train_models.py --tune --n-iter 5   # version courte, pour vérifier la mécanique
+```
+
+Les optima trouvés ne sont pas repris automatiquement dans `BEST_PARAMS` : le
+script le signale, à reporter manuellement après vérification.
+
+Consulter les runs :
+
+```bash
+mlflow ui
+```
+
+### Lancer les tests
+
+```bash
+pytest
+flake8 app src tests
+```
+
+Les tests couvrent le preprocessing d'une observation isolée (`congestion_score`,
+`horn_density`, encodage ordinal, one-hot météo, seuils de niveau de stress) et
+le **contrat entre le dataset, le modèle et l'application** :
+
+- les colonnes de `data_boost` contiennent bien les features attendues ;
+- l'ordre des features du booster correspond exactement à celui de l'app — un
+  simple réordonnancement ne lève pas toujours d'erreur mais fausse les
+  prédictions ;
+- les hyperparamètres de `BEST_PARAMS` correspondent à l'optimum sauvegardé dans
+  `best_params.pkl`, et le modèle livré les porte réellement.
+
+Cette dernière vérification verrouille une dérive constatée sur ce projet : un
+script entraînant avec des hyperparamètres arrondis, donc un modèle livré qui
+n'était plus celui que la recherche avait sélectionné, sans qu'aucune erreur ne
+le signale.
+
+La CI GitHub Actions exécute `pytest` et `flake8` sur Python 3.11 et 3.12 à
+chaque push et pull request, en installant `requirements.txt` en entier — ce qui
+valide aussi que le jeu de versions épinglé s'installe réellement.
+
 ### Reproduire les notebooks
 
 ```bash
@@ -239,16 +373,18 @@ Exécuter dans l'ordre : `01_eda.ipynb` → `02_preprocessing.ipynb` → `03_mod
 
 | Catégorie | Outil | Version |
 |-----------|-------|---------|
-| Langage | Python | 3.11 |
+| Langage | Python | 3.11 / 3.12 |
 | Manipulation données | pandas | 2.2.2 |
 | Calcul numérique | numpy | 1.26.4 |
-| Visualisation EDA | matplotlib, seaborn | 3.9.0 / 0.13.2 |
-| Machine Learning | scikit-learn | 1.5.1 |
+| Visualisation EDA | matplotlib, seaborn | 3.10.8 / 0.13.2 |
+| Machine Learning | scikit-learn | 1.4.2 |
 | Gradient Boosting | XGBoost | 2.1.1 |
-| Gradient Boosting | LightGBM | 4.5.0 |
-| Statistiques | scipy, statsmodels | 1.13.1 / 0.14.2 |
-| Application web | Streamlit | 1.38.0 |
+| Gradient Boosting | LightGBM | 4.3.0 |
+| Statistiques | scipy, statsmodels | 1.13.1 / 0.14.6 |
+| Application web | Streamlit | 1.60.0 |
 | Visualisation interactive | Plotly | 5.22.0 |
+| Tracking d'expériences | MLflow | 2.16.2 |
+| Tests / lint | pytest, flake8 | 8.3.2 / 7.1.1 |
 
 ---
 
@@ -257,6 +393,12 @@ Exécuter dans l'ordre : `01_eda.ipynb` → `02_preprocessing.ipynb` → `03_mod
 - [Smart City Traffic Stress Index Dataset](https://www.kaggle.com/datasets/sonalshinde123/smart-city-traffic-stress-index-dataset/data)
 - [Traffic Stress Index EDA & Prediction (XGBoost)](https://www.kaggle.com/code/pialghosh/traffic-stress-index-eda-prediction-xgboost)
 - [Smart City Traffic Stress Insights](https://www.kaggle.com/code/sumedh1507/smart-city-traffic-stress-insights)
+
+---
+
+## Licence
+
+Ce projet est distribué sous licence MIT — voir [LICENSE](LICENSE).
 
 ---
 

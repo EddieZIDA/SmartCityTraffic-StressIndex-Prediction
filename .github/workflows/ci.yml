@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 est la version annoncee par le README, 3.12 celle de la machine
+        # de developpement. Tester les deux attrape les ruptures propres a une
+        # version : c'est ainsi que mlflow 2.8.1 cassait sur 3.12 (pkg_resources).
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # Installer requirements.txt en entier est volontaire : c'est ce qui
+      # valide que le jeu de versions épinglé s'installe réellement.
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint (flake8)
+        run: flake8 app src tests
+
+      - name: Tests (pytest)
+        run: pytest

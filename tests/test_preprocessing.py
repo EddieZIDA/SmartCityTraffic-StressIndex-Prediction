@@ -26,18 +26,30 @@ def test_preprocess_input_nominal(sample_observation):
 def test_preprocess_input_edge_cases_and_invalid_types():
     # Missing numeric -> should raise TypeError when arithmetic attempted
     with pytest.raises(TypeError):
-        utils.preprocess_input(traffic_density=None, signal_wait_time=30, avg_speed=40, road_quality=7.5, experience="Beginner", weather="Hot")
+        utils.preprocess_input(
+            traffic_density=None, signal_wait_time=30, avg_speed=40,
+            road_quality=7.5, experience="Beginner", weather="Hot",
+        )
 
     # Incorrect types for numeric field -> should raise
     with pytest.raises(TypeError):
-        utils.preprocess_input(traffic_density="heavy", signal_wait_time=30, avg_speed=40, road_quality=7.5, experience="Beginner", weather="Hot")
+        utils.preprocess_input(
+            traffic_density="heavy", signal_wait_time=30, avg_speed=40,
+            road_quality=7.5, experience="Beginner", weather="Hot",
+        )
 
     # Unknown experience maps to default 0
-    df_unknown = utils.preprocess_input(traffic_density=10, signal_wait_time=5, avg_speed=30, road_quality=6.0, experience="Unknown", weather="Hot", horn_events=0)
+    df_unknown = utils.preprocess_input(
+        traffic_density=10, signal_wait_time=5, avg_speed=30,
+        road_quality=6.0, experience="Unknown", weather="Hot", horn_events=0,
+    )
     assert df_unknown.iloc[0]["driver_experience_encoded"] == 0
 
     # Unknown weather results in all weather_* == 0
-    df_weather = utils.preprocess_input(traffic_density=10, signal_wait_time=5, avg_speed=30, road_quality=6.0, experience="Expert", weather="Sunny", horn_events=0)
+    df_weather = utils.preprocess_input(
+        traffic_density=10, signal_wait_time=5, avg_speed=30,
+        road_quality=6.0, experience="Expert", weather="Sunny", horn_events=0,
+    )
     assert df_weather.iloc[0]["weather_Foggy"] == 0
     assert df_weather.iloc[0]["weather_Hot"] == 0
     assert df_weather.iloc[0]["weather_Rainy"] == 0
@@ -49,7 +61,9 @@ def test_output_coherence_bounds(sample_observation):
 
     # congestion_score non-négatif et cohérent
     assert row["congestion_score"] >= 0
-    assert row["congestion_score"] == pytest.approx((sample_observation["traffic_density"] * sample_observation["signal_wait_time"]) / 100)
+    expected = (sample_observation["traffic_density"]
+                * sample_observation["signal_wait_time"]) / 100
+    assert row["congestion_score"] == pytest.approx(expected)
 
     # horn_density non-négatif
     assert row["horn_density"] >= 0

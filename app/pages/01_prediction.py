@@ -6,7 +6,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
-from utils import load_model, preprocess_input, stress_level
+from utils import EXP_MAP, load_model, preprocess_input, stress_level
 
 st.set_page_config(page_title="Prediction", page_icon="", layout="wide")
 
@@ -94,12 +94,7 @@ with col_m:
     m1.metric("Qualité route",    f"{road_quality}/10")
     m2.metric("Congestion score", f"{congestion}",
               help="traffic × attente / 100")
-    badge_exp = {"Beginner": "", "Intermediate": "", "Expert": ""}
-    badge_wea = {"Clear": "", "Foggy": "", "Hot": "", "Rainy": ""}
-    st.info(
-        f"{badge_exp[experience]} **{experience}**  ·  "
-        f"{badge_wea[weather]} **{weather}**"
-    )
+    st.info(f"**{experience}**  ·  **{weather}**")
     with st.expander("Voir les features envoyées au modèle"):
         st.dataframe(X)
 
@@ -108,8 +103,7 @@ st.divider()
 # ── Contribution estimée ──────────────────────────────────────────
 st.subheader("Contribution estimée des variables")
 
-exp_map   = {"Beginner": 0, "Intermediate": 1, "Expert": 2}
-horn_d    = horn_events / (traffic_density + 1)
+horn_d = horn_events / (traffic_density + 1)
 
 contrib_df = pd.DataFrame({
     "Feature": [
@@ -124,7 +118,7 @@ contrib_df = pd.DataFrame({
     "Impact": [
         min(congestion / 88.7, 1.0),
         (90 - avg_speed) / 90,
-        (2 - exp_map[experience]) / 2,
+        (2 - EXP_MAP[experience]) / 2,
         (10 - road_quality) / 10,
         min(horn_d / 0.25, 1.0),
         0.02,
@@ -153,28 +147,43 @@ st.divider()
 # ── Simulation ────────────────────────────────────────────────────
 st.subheader("Simulation — impact d'un paramètre")
 
-param = st.selectbox("Faire varier :",
+param = st.selectbox(
+    "Faire varier :",
     ["Densité trafic", "Vitesse moyenne",
-     "Attente aux feux", "Qualité de route"])
+     "Attente aux feux", "Qualité de route"]
+)
 
+# Bornes alignées sur celles des sliders ci-dessus (bornes hautes incluses).
 ranges = {
-    "Densité trafic":   range(10, 120),
-    "Vitesse moyenne":  range(14, 91),
-    "Attente aux feux": range(5, 75),
+    "Densité trafic":   list(range(10, 120)),
+    "Vitesse moyenne":  list(range(14, 91)),
+    "Attente aux feux": list(range(5, 76)),
     "Qualité de route": [x / 10 for x in range(10, 101)],
 }
 
-sim_scores = []
-for v in ranges[param]:
-    td  = v if param == "Densité trafic"   else traffic_density
-    spd = v if param == "Vitesse moyenne"  else avg_speed
-    swt = v if param == "Attente aux feux" else signal_wait_time
-    rq  = v if param == "Qualité de route" else road_quality
-    sim_scores.append(float(model.predict(
-        preprocess_input(td, swt, spd, rq, experience, weather, horn_events)
-    )[0]))
+sim_values = ranges[param]
 
-sim_df = pd.DataFrame({"x": list(ranges[param]), "stress": sim_scores})
+# Une seule passe de prédiction sur tout le balayage : le modèle compte
+# 563 arbres, appeler predict() point par point rerendait la page lente.
+sim_rows = pd.concat(
+    [
+        preprocess_input(
+            v if param == "Densité trafic"   else traffic_density,
+            v if param == "Attente aux feux" else signal_wait_time,
+            v if param == "Vitesse moyenne"  else avg_speed,
+            v if param == "Qualité de route" else road_quality,
+            experience, weather, horn_events,
+        )
+        for v in sim_values
+    ],
+    ignore_index=True,
+)
+
+# Même bornage que le score affiché : sans cela la courbe pouvait sortir
+# de [0, 100] et ne plus croiser la ligne « valeur actuelle ».
+sim_scores = model.predict(sim_rows).clip(0.0, 100.0).round(1)
+
+sim_df = pd.DataFrame({"x": sim_values, "stress": sim_scores})
 
 fig_sim = px.line(
     sim_df, x="x", y="stress",
@@ -187,4 +196,3 @@ fig_sim.add_hline(y=44.4, line_dash="dash", line_color="#999",
 fig_sim.update_layout(plot_bgcolor="white", margin=dict(t=30, b=20))
 fig_sim.update_traces(line_color="#2E75B6", line_width=2.5)
 st.plotly_chart(fig_sim, use_container_width=True)
-

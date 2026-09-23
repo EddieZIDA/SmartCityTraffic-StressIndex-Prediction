@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from xgboost import XGBRegressor
 
 # ── Chemins absolus depuis la racine du repo ──────────────────────
 # utils.py est dans .../app/
@@ -10,16 +11,24 @@ import streamlit as st
 APP_DIR      = Path(__file__).resolve().parent
 PROJECT_ROOT = APP_DIR.parent
 
+# Format natif XGBoost : portable entre versions de xgboost/sklearn et sans
+# désérialisation de code arbitraire. Le pickle reste un repli historique.
+MODEL_JSON_PATH = PROJECT_ROOT / "models" / "best_model_tuned_xgboost.json"
 MODEL_PATH = PROJECT_ROOT / "models" / "best_model_tuned_xgboost.pkl"
 BOOST_PATH = PROJECT_ROOT / "data" / "processed" / "smart-city-traffic-stress-index-dataset_clean_boost.csv"
 RAW_PATH   = PROJECT_ROOT / "data" / "raw"       / "smart_city_traffic_stress_dataset.csv"
 
-# Colonnes exactes de data_boost (02_preprocessing.ipynb cell 4)
-# ['avg_speed', 'road_quality_score', 'stress_index',
-#  'driver_experience_encoded', 'weather_Foggy', 'weather_Hot',
-#  'weather_Rainy', 'congestion_score', 'horn_density']
+# Colonnes de data_boost, dans l'ordre exact produit par 02_preprocessing.ipynb
+# (stress_index exclu). L'ordre compte : le booster est entraîné dessus.
+#
+# traffic_density, signal_wait_time et horn_events_per_min sont conservées
+# malgré leur VIF élevé : la multicolinéarité ne gêne que les modèles à
+# coefficients, et les retirer coûtait 0.0014 de R² en validation croisée.
 FEATURE_COLS = [
+    "traffic_density",
+    "horn_events_per_min",
     "avg_speed",
+    "signal_wait_time",
     "road_quality_score",
     "driver_experience_encoded",
     "weather_Foggy",
@@ -35,19 +44,29 @@ EXP_MAP = {"Beginner": 0, "Intermediate": 1, "Expert": 2}
 @st.cache_resource
 def load_model():
     """
-    Charge best_model_tuned_xgboost.pkl
+    Charge le modèle XGBoost tuné.
+
+    Priorité au format natif (.json) : portable entre versions de xgboost et
+    sans désérialisation de code arbitraire. Repli sur le pickle historique.
     Entraîné sur data_boost SANS scaling (XGBoost n'en a pas besoin).
     """
-    if not MODEL_PATH.exists():
-        files = [p.name for p in MODEL_PATH.parent.iterdir()] \
-            if MODEL_PATH.parent.exists() else ["dossier absent"]
-        st.error(
-            f"Modèle introuvable : {MODEL_PATH}\n"
-            f"Fichiers présents : {files}"
-        )
-        return None
-    with open(MODEL_PATH, "rb") as f:
-        return pickle.load(f)
+    if MODEL_JSON_PATH.exists():
+        model = XGBRegressor()
+        model.load_model(MODEL_JSON_PATH)
+        return model
+
+    if MODEL_PATH.exists():
+        with open(MODEL_PATH, "rb") as f:
+            return pickle.load(f)
+
+    model_dir = MODEL_PATH.parent
+    files = [p.name for p in model_dir.iterdir()] \
+        if model_dir.exists() else ["dossier absent"]
+    st.error(
+        f"Modèle introuvable : {MODEL_JSON_PATH} ou {MODEL_PATH}\n"
+        f"Fichiers présents : {files}"
+    )
+    return None
 
 
 @st.cache_data
@@ -88,7 +107,10 @@ def preprocess_input(traffic_density, signal_wait_time, avg_speed,
     horn_density     = horn_events / (traffic_density + 1)
 
     return pd.DataFrame([{
+        "traffic_density"          : traffic_density,
+        "horn_events_per_min"      : horn_events,
         "avg_speed"                : avg_speed,
+        "signal_wait_time"         : signal_wait_time,
         "road_quality_score"       : road_quality,
         "driver_experience_encoded": EXP_MAP.get(experience, 0),
         "weather_Foggy"            : 1 if weather == "Foggy"  else 0,

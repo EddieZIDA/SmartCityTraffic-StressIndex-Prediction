@@ -20,9 +20,9 @@ exclude =
     env,
     venv,
     .venv,
+    .pytest_cache,
     data/,
     models/,
+    mlruns/,
     notebooks/,
     results/
-
-    

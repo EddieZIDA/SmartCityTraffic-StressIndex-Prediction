@@ -19,20 +19,23 @@ st.markdown(
 # ── Résultats figés depuis 03_modeling.ipynb ──────────────────────
 avant = pd.DataFrame({
     "Modèle":   ["LinearRegression", "RandomForest", "XGBoost", "LightGBM"],
-    "R²":       [0.8587, 0.9019, 0.9045, 0.9086],
-    "RMSE":     [6.107,  5.088,  5.022,  4.913],
-    "MAE":      [4.871,  4.078,  4.017,  3.930],
-    "R² train": [0.8636, 0.9863, 0.9301, 0.9170],
-    "Gap":      [0.0049, 0.0844, 0.0256, 0.0084],
+    "R²":       [0.8587, 0.9039, 0.9056, 0.9089],
+    "RMSE":     [6.107,  5.037,  4.992,  4.903],
+    "MAE":      [4.871,  4.031,  3.998,  3.928],
+    "R² train": [0.8636, 0.9866, 0.9317, 0.9182],
+    "Gap":      [0.0049, 0.0828, 0.0261, 0.0093],
     "Phase":    ["Avant tuning"] * 4,
 })
+# Gap = R² train − R² test (mesure d'overfitting sur le jeu tenu à l'écart).
+# La version précédente comparait R² train au R² de validation croisée, deux
+# estimateurs différents : les écarts affichés n'étaient pas comparables.
 apres = pd.DataFrame({
     "Modèle":   ["LinearRegression", "RandomForest", "XGBoost", "LightGBM"],
-    "R²":       [0.8587, 0.9077, 0.9090, 0.9085],
-    "RMSE":     [6.107,  4.937,  4.902,  4.915],
-    "MAE":      [4.871,  3.952,  3.927,  3.937],
-    "R² train": [0.8636, 0.9276, 0.9203, 0.9138],
-    "Gap":      [0.0049, 0.0181, 0.0106, 0.0042],
+    "R²":       [0.8587, 0.9083, 0.9100, 0.9096],
+    "RMSE":     [6.107,  4.919,  4.873,  4.886],
+    "MAE":      [4.871,  3.938,  3.901,  3.913],
+    "R² train": [0.8636, 0.9337, 0.9147, 0.9172],
+    "Gap":      [0.0049, 0.0254, 0.0046, 0.0076],
     "Phase":    ["Après tuning"] * 4,
 })
 
@@ -42,9 +45,9 @@ st.markdown("Quatre modèles ont été évalués initialement :")
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Linear Regression", "R² = 0.8587", "Benchmark")
-c2.metric("Random Forest",     "R² = 0.9019", "Overfitting gap=0.084")
-c3.metric("XGBoost",           "R² = 0.9045")
-c4.metric("LightGBM",          "R² = 0.9086")
+c2.metric("Random Forest",     "R² = 0.9039", "Overfitting gap=0.083")
+c3.metric("XGBoost",           "R² = 0.9056")
+c4.metric("LightGBM",          "R² = 0.9089")
 
 st.divider()
 
@@ -75,32 +78,39 @@ st.plotly_chart(fig_cmp, use_container_width=True)
 st.subheader("Tableau comparatif")
 comparison_data = {
     "Modèle":     ["RandomForest", "XGBoost", "LightGBM"],
-    "R² Avant":   ["0.9019", "0.9045", "0.9086"],
-    "R² Après":   ["0.9077", "0.9090", "0.9085"],
-    "RMSE Avant": ["5.088",  "5.022",  "4.913"],
-    "RMSE Après": ["4.937",  "4.902",  "4.915"],
-    "Gain R²":    ["+0.0058", "+0.0045", "-0.0001"]
+    "R² Avant":   ["0.9039", "0.9056", "0.9089"],
+    "R² Après":   ["0.9083", "0.9100", "0.9096"],
+    "RMSE Avant": ["5.037",  "4.992",  "4.903"],
+    "RMSE Après": ["4.919",  "4.873",  "4.886"],
+    "Gain R²":    ["+0.0044", "+0.0044", "+0.0006"]
 }
 st.table(comparison_data)
 
 st.success(
     "**Le modèle XGBoost Tuné a été retenu comme modèle final.**\n\n"
     "Il offre le meilleur score de généralisation "
-    "(R²=0.909, RMSE=4.902, MAE=3.927) avec un gap overfitting "
-    "minimal de 0.0106 entre train et test."
+    "(R²=0.910, RMSE=4.873, MAE=3.901) avec un gap overfitting "
+    "minimal de 0.0046 entre train et test."
 )
 
 with st.expander("Voir les hyperparamètres finaux de XGBoost"):
     st.code(
         "XGBRegressor(\n"
-        "    colsample_bytree = 0.7599,\n"
-        "    learning_rate    = 0.0193,\n"
-        "    max_depth        = 6,\n"
-        "    n_estimators     = 563,\n"
-        "    subsample        = 0.6931,\n"
+        "    colsample_bytree = 0.6102,\n"
+        "    learning_rate    = 0.0208,\n"
+        "    max_depth        = 3,\n"
+        "    min_child_weight = 4,\n"
+        "    n_estimators     = 933,\n"
+        "    reg_lambda       = 0.6967,\n"
+        "    subsample        = 0.8418,\n"
         "    random_state     = 42\n"
         ")",
         language="python"
+    )
+    st.caption(
+        "La grille de recherche initiale plafonnait à 600 arbres : l'optimum, "
+        "situé vers 930 arbres à faible learning rate, était hors de sa portée. "
+        "L'élargir a suffi à le faire apparaître."
     )
 
 st.divider()
@@ -129,8 +139,8 @@ fig_ov.update_layout(
 )
 st.plotly_chart(fig_ov, use_container_width=True)
 st.info(
-    "RandomForest avait un gap de **0.0844** avant tuning → "
-    "réduit à **0.0181** après (min_samples_leaf=14, max_depth=17)"
+    "RandomForest avait un gap de **0.0828** avant tuning → "
+    "réduit à **0.0254** après (min_samples_leaf=10, max_depth=13)"
 )
 
 st.divider()
@@ -138,15 +148,27 @@ st.divider()
 # ── Section 4 : Feature Importance ───────────────────────────────
 st.header("4. Feature Importance")
 
+st.caption(
+    "Importances mesurées sur les modèles tunés, ramenées à une base "
+    "comparable (*gain* pour XGBoost et LightGBM, réduction d'impureté pour "
+    "RandomForest) et normalisées à 1. Comparer le *gain* de XGBoost au "
+    "nombre de splits de LightGBM — son défaut — donne un classement "
+    "trompeur."
+)
+
 imp_data = {
     "Feature": [
-        "congestion_score", "avg_speed",
-        "driver_experience_encoded", "road_quality_score",
-        "horn_density", "weather_Rainy", "weather_Foggy", "weather_Hot"
+        "traffic_density", "congestion_score", "signal_wait_time",
+        "driver_experience_encoded", "horn_events_per_min", "avg_speed",
+        "road_quality_score", "horn_density",
+        "weather_Foggy", "weather_Hot", "weather_Rainy"
     ],
-    "XGBoost":      [0.52, 0.28, 0.09, 0.05, 0.03, 0.01, 0.01, 0.01],
-    "RandomForest": [0.48, 0.30, 0.10, 0.06, 0.03, 0.01, 0.01, 0.01],
-    "LightGBM":     [0.50, 0.27, 0.11, 0.06, 0.03, 0.01, 0.01, 0.01],
+    "XGBoost":      [0.3254, 0.2227, 0.1867, 0.1437, 0.0422, 0.0420,
+                     0.0352, 0.0011, 0.0004, 0.0003, 0.0003],
+    "RandomForest": [0.2502, 0.3524, 0.1167, 0.1210, 0.0332, 0.0574,
+                     0.0622, 0.0062, 0.0002, 0.0001, 0.0003],
+    "LightGBM":     [0.3399, 0.3922, 0.0241, 0.1259, 0.0207, 0.0330,
+                     0.0634, 0.0007, 0.0000, 0.0000, 0.0000],
 }
 imp_df = pd.DataFrame(imp_data)
 choice = st.radio("Modèle :", ["XGBoost", "RandomForest", "LightGBM"],
@@ -156,15 +178,20 @@ fig_imp = px.bar(
     imp_s, x=choice, y="Feature", orientation="h",
     color=choice, color_continuous_scale=["#E6F1FB", "#1F4E79"],
     labels={choice: "Importance", "Feature": ""},
-    height=360, text=choice
+    height=420, text=choice
 )
-fig_imp.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+fig_imp.update_traces(texttemplate="%{text:.3f}", textposition="outside")
 fig_imp.update_layout(plot_bgcolor="white", coloraxis_showscale=False,
                       margin=dict(r=60))
 st.plotly_chart(fig_imp, use_container_width=True)
 st.success(
-    "**congestion_score** est la feature dominante (~50%) "
-    "dans les 3 modèles — valide le feature engineering."
+    "**Le trio congestion : `traffic_density`, `congestion_score` et "
+    "`signal_wait_time` concentre 72 % à 76 % du gain** selon le modèle.\n\n"
+    "L'importance se répartit entre `congestion_score` et les deux variables "
+    "dont il est le produit : c'est l'effet attendu de la colinéarité, "
+    "deux features redondantes se partageant le crédit. Cela ne dégrade pas "
+    "les prédictions — conserver les trois fait gagner 0.0014 de R² — mais "
+    "interdit de lire ce classement comme une hiérarchie causale."
 )
 
 st.divider()
@@ -225,4 +252,3 @@ try:
 
 except Exception as e:
     st.error(f"Erreur lors du calcul des résidus : {e}")
-

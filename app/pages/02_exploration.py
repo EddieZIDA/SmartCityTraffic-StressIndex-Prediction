@@ -22,6 +22,19 @@ if df.empty:
     st.warning("Les données n'ont pas pu être chargées.")
     st.stop()
 
+REQUIRED_COLS = [
+    "traffic_density", "horn_events_per_min", "avg_speed", "signal_wait_time",
+    "weather_condition", "road_quality_score", "driver_experience_level",
+    "stress_index",
+]
+missing_cols = [c for c in REQUIRED_COLS if c not in df.columns]
+if missing_cols:
+    st.error(
+        "Colonnes absentes du dataset brut : "
+        f"{missing_cols}. Vérifiez data/raw/."
+    )
+    st.stop()
+
 # ── KPIs ──────────────────────────────────────────────────────────
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Lignes",            f"{df.shape[0]:,}")
@@ -33,16 +46,28 @@ st.divider()
 
 # ── Sidebar filtres ───────────────────────────────────────────────
 st.sidebar.header("Filtres")
+
+# Options dérivées des données : un dataset dont les modalités diffèrent
+# de la liste attendue produisait sinon un filtre vide sans explication.
+weather_options = sorted(df["weather_condition"].dropna().unique().tolist())
+exp_order = {"Beginner": 0, "Intermediate": 1, "Expert": 2}
+exp_options = sorted(
+    df["driver_experience_level"].dropna().unique().tolist(),
+    key=lambda v: exp_order.get(v, len(exp_order))
+)
+
 weather_filter = st.sidebar.multiselect(
-    "Météo", df["weather_condition"].unique().tolist(),
-    default=df["weather_condition"].unique().tolist()
+    "Météo", weather_options, default=weather_options
 )
 exp_filter = st.sidebar.multiselect(
-    "Expérience conducteur",
-    ["Beginner", "Intermediate", "Expert"],
-    default=["Beginner", "Intermediate", "Expert"]
+    "Expérience conducteur", exp_options, default=exp_options
 )
-stress_range = st.sidebar.slider("Plage stress_index", 0, 100, (0, 100))
+
+stress_min = float(df["stress_index"].min())
+stress_max = float(df["stress_index"].max())
+stress_range = st.sidebar.slider(
+    "Plage stress_index", stress_min, stress_max, (stress_min, stress_max)
+)
 
 filtered = df[
     df["weather_condition"].isin(weather_filter) &
@@ -140,4 +165,3 @@ fig6 = px.imshow(
 )
 fig6.update_layout(margin=dict(t=30, b=20))
 st.plotly_chart(fig6, use_container_width=True)
-

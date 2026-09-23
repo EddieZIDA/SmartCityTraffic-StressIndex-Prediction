@@ -63,9 +63,9 @@ st.divider()
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Dataset",         "50 000 obs.",   "8 variables originales")
-c2.metric("Meilleur modèle", "XGBoost tuné",  "R² = 0.909")
-c3.metric("RMSE",            "4.902",         "sur échelle 0-100")
-c4.metric("MAE",             "3.927",         "erreur absolue moyenne")
+c2.metric("Meilleur modèle", "XGBoost tuné",  "R² = 0.910")
+c3.metric("RMSE",            "4.873",         "sur échelle 0-100")
+c4.metric("MAE",             "3.901",         "erreur absolue moyenne")
 
 st.divider()
 st.subheader("Utilisez le menu latéral pour naviguer")
@@ -99,4 +99,3 @@ st.caption(
     "Smart City Traffic Stress · XGBoost · Streamlit · "
     "ZIDA Wend Kouni Eddie Eliel"
 )
-
